@@ -1,11 +1,11 @@
 /** \mainpage
  * Arduino library for Frsky Smart Port protocol.
- * 
+ *
  * This library is not designed to decode data on the transmitter, but on the receiver side. OpenTX makes the rest of
  *  the job on the transmitter.
  *
  * This development is completely independent of Frsky or OpenTX.
- * 
+ *
  * What to know about Smart Port
  * =============================
  * * use an inverted serial communication at 57600bds muxed on one port
@@ -13,11 +13,11 @@
  * * compared to D, the SP protocol seems much faster, but maybe not - it's easier to use for data encoding, and is
  *   nicer to have a bus than a hub, but the polling of 28 IDs takes time (i.e. if a sensor has many values, it can
  *   send only one at a time, ex. GPS).
- * 
+ *
  * Default physical IDs
  * --------------------
  * Every sensor board muste haves a physical ID, that can be changed by the way. Here is a list of the default IDs.
- * 
+ *
  * ID | with CRC | sensor
  * ---|----------|-------
  * 1  | 0x00     | Vari-H (altimeter high precision)
@@ -48,36 +48,36 @@
  * 26 | 0x39     | PowerBox (aka Redudancy Bus)
  * 27 | 0xBA     | -
  * 28 | 0x1B     | -
- * 
+ *
  * Receiver behavior
  * -----------------
  * The receiver polls in a cyle of ~11 ms.
- * 
+ *
  * byte | description
  * -----|------------
  * 0x7E | poll header
  * ID   | physical ID (1-28) computed with a CRC (see \ref FrskySP_sensor_demo/FrskySP_sensor_demo.ino for the full list of polled IDs)
- * 
+ *
  * * The receiver will poll the IDs in sequence to find which one is present.
  * * If only one physical ID is found, the receiver will alternate the sensor polling and the search (present sensor,
  *   next ID to search, present sensor, next ID and so on).
  * * If more sensors are found, the poll sequence returns almost to a normal search pattern.
- * 
+ *
  * Sensor behavior
  * ---------------
  * Genuine Frsky sensors: the sensor answers to every pool on its physical ID to announce its presence. If no data can
  * be transmitted (no refresh), the sensor answers by an empty packet and a false CRC (type 0x00, ID 0x0000,
  * value 0x00000000, CRC 0xFF).
- * 
+ *
  * byte(s) | descrption
  * --------|-----------
  * 1       | type (only 0x10 at now)
  * 2       | sensor logical ID (see \ref FrskySP.h for the full list of IDs)
  * 4 (1)   | value
  * 1       | CRC
- * 
+ *
  * (1) length may be up to 8 bytes, while escaping 0x7D and 7x7E values
- * 
+ *
  * Slowness considerations
  * =======================
  * There are 2 recurrent discussions on Internet, that are related to what is used in this code and examples:
@@ -88,21 +88,21 @@
  * ~~~~~
  * int b = (int) a / 10;     // faster (a & b are integers)
  * int b = (int) a * 0.1;    // slower
- * 
+ *
  * float b = (int) a / 10;   // slower (b is a float)
  * float b = (int) a * 0.1;  // faster
  * ~~~~~
  * A float computing can take up to 40us. Unless you make a lot of them, there is plenty of time to answer within the
  * poll cycle (11 ms). Allthough, OpenTX has many computing to do and has no time to lose. There is a little drift for
  * the GPS and airspeed values shown on the remote control.
- * 
+ *
  * Although, you must be careful around those issues:
  * * only one sensor per physical ID (ex. GPS and normal precision altimeter share the same physical ID 3)
  * * only one answer per poll cycle (the [FrskySP_sensor_demo.ino](\ref FrskySP_sensor_demo/FrskySP_sensor_demo.ino)
  *   example shows how to handle multiple answers for one physical ID)
  * * take care about the polling time of the sensor. For instance, polling a DS18x20 temperature sensor takes up to
  *   750ms. The polling must be asynchronous to be answered within the cycle of 11ms.
- * 
+ *
  * Connections
  * ===========
  * Simply connect the smart port data line to any pin SoftwareSerial can be used on.
@@ -114,11 +114,22 @@
  * \see http://www.open-tx.org/
  * \copyright 2014-2016 - Jean-Christophe Heger - Released under the LGPL 3.0 license.
  */
- 
+
 #include "Arduino.h"
 #include "FrskySP.h"
-#include "SoftwareSerial.h"
 
+void FrskySP::_enableTX()
+{
+    this->_ledToggle(HIGH);
+    this->_serial->setPins(0, this->_serialPin, 0, 0);
+    delay(1);
+}
+void FrskySP::_enableRX()
+{
+    this->_serial->flush();
+    this->_ledToggle(LOW);
+    this->_serial->setPins(this->_serialPin, 0, 0, 0);
+}
 /**
  * Open a SoftwareSerial connection
  * \param pin Communications pin
@@ -127,18 +138,19 @@
  *   than SerialSoftware, and no conflict with [PinChangeInt] (https://code.google.com/p/arduino-pinchangeint/) - see
  *  [bugs] (https://code.google.com/p/arduino-pinchangeint/wiki/Bugs).
  */
-FrskySP::FrskySP (int pin) {
-    this->mySerial = new SoftwareSerial (pin, pin, true);
-    this->mySerial->begin (57600);
+FrskySP::FrskySP (HardwareSerial* serial, int pin) {
+    this->_serial = serial;
+    this->_serialPin = pin;
+    this->_serial->begin(57600, SERIAL_8N1, this->_serialPin, 0, true);
 }
 
 /**
  * Check if a byte is available on Smart Port
- * 
+ *
  * \brief SoftwareSerial.available() passthrough
  */
 int FrskySP::available () {
-    return this->mySerial->available ();
+    return this->_serial->available ();
 }
 
 /**
@@ -197,7 +209,7 @@ bool FrskySP::CRCcheck (uint8_t *packet) {
  * FLVSS does not work the same way than the D8 series. Sending a battery ID over 5
  * will overflow the next sensor on the Taranis. In order to have more than 6 cells,
  * either use another logical ID (ex. FRSKY_SP_CELLS+1), or use another physical ID.
- * 
+ *
  * \brief Same as lipoCell (uint8_t id, float val1, float val2), but with only one cell.
  * \param id cell ID (0~5)
  * \param val cell voltage
@@ -217,7 +229,7 @@ uint32_t FrskySP::lipoCell (uint8_t id, float val) {
  * volt[id]   | 12-bits
  * celltotal  | 4 bits
  * cellid     | 4 bits
- * 
+ *
  * The cell total is not used on OpenTX. The cell count is modified by the highest id,
  * but 12 at a maximum.
  *
@@ -238,12 +250,12 @@ uint32_t FrskySP::lipoCell (uint8_t id, float val1, float val2) {
  * \brief SoftwareSerial.read() passthrough
  */
 byte FrskySP::read () {
-    return this->mySerial->read ();
+    return this->_serial->read ();
 }
 
 /**
  * Based on the CleanFlight's code
- * 
+ *
  * \brief Send byte and calculate CRC
  * \param c byte value
  * \param *crcp crc pointer
@@ -252,10 +264,11 @@ byte FrskySP::read () {
 void FrskySP::sendByte (uint8_t c, uint16_t *crcp) {
     // smart port escape sequence
     if (c == 0x7D || c == 0x7E) {
-        mySerial->write (0x7D);
+        this->write (0x7D);
         c ^= 0x20;
     }
 
+    //Serial.printf("write %02X\r\n", c);
     this->write (c);
 
     if (crcp == NULL) return;
@@ -269,7 +282,7 @@ void FrskySP::sendByte (uint8_t c, uint16_t *crcp) {
 
 /**
  * Sensors logical IDs and value formats are documented in FrskySP.h.
- * 
+ *
  * \brief Simplified version of sendData(), while the type is only 0x10 at now.
  * \param id sensor ID
  * \param val value
@@ -281,7 +294,7 @@ void FrskySP::sendData (uint16_t id, int32_t val) {
 /**
  * Sensors logical IDs and value formats are documented in FrskySP.h.
  * Based on the CleanFlight's code
- * 
+ *
  * Packet format:
  * content   | length | remark
  * --------- | ------ | ------
@@ -289,7 +302,7 @@ void FrskySP::sendData (uint16_t id, int32_t val) {
  * sensor ID | 16 bit | sensor's logical ID (see FrskySP.h for values)
  * data      | 32 bit | preformated data
  * crc       | 8 bit  | calculated by CRC()
- * 
+ *
  * \brief Prepare the packet and send it.
  * \param type value type
  * \param id sensor ID
@@ -298,32 +311,34 @@ void FrskySP::sendData (uint16_t id, int32_t val) {
  * \see https://github.com/cleanflight/cleanflight/blob/master/src/main/telemetry/smartport.c
  */
 void FrskySP::sendData (uint8_t type, uint16_t id, int32_t val) {
+    this->_enableTX();
     int i = 0;
-	uint16_t crc = 0;
-	uint8_t *u8p;
+    uint16_t crc = 0;
+    uint8_t *u8p;
 
-	// type
-	FrskySP::sendByte (type, &crc);
-	
-	// id
-	u8p = (uint8_t*)&id;
-	FrskySP::sendByte (u8p[0], &crc);
-	FrskySP::sendByte (u8p[1], &crc);
-	
-	// val
-	u8p = (uint8_t*)&val;
-	FrskySP::sendByte (u8p[0], &crc);
-	FrskySP::sendByte (u8p[1], &crc);
-	FrskySP::sendByte (u8p[2], &crc);
-	FrskySP::sendByte (u8p[3], &crc);
-	
-	// crc
-	FrskySP::sendByte (0xFF - (uint8_t)crc, NULL);
+    // type
+    FrskySP::sendByte (type, &crc);
+
+    // id
+    u8p = (uint8_t*)&id;
+    FrskySP::sendByte (u8p[0], &crc);
+    FrskySP::sendByte (u8p[1], &crc);
+
+    // val
+    u8p = (uint8_t*)&val;
+    FrskySP::sendByte (u8p[0], &crc);
+    FrskySP::sendByte (u8p[1], &crc);
+    FrskySP::sendByte (u8p[2], &crc);
+    FrskySP::sendByte (u8p[3], &crc);
+
+    // crc
+    FrskySP::sendByte (0xFF - (uint8_t)crc, NULL);
+    this->_enableRX();
 }
 
 /**
  * \brief SoftwareSerial.write() passthrough
  */
 byte FrskySP::write (byte val) {
-    return this->mySerial->write (val);
+    return this->_serial->write (val);
 }

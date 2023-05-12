@@ -1,4 +1,8 @@
 # arduino-frskysp
+Forked for esp32 reasons
+Not sure I'm going to try to merge, but definitely needs more cleanup either way.
+
+
 FrskySP (SmartPort) protocol library for Arduino - Arduino 1.5 compliant repository of [frsky-arduino](https://github.com/jcheger/frsky-arduino)
 
 This library is in beta stage. All known sensors were tested and seem to work.
