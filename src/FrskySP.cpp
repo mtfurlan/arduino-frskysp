@@ -122,7 +122,8 @@ void FrskySP::_enableTX()
 {
     this->_ledToggle(HIGH);
     this->_serial->setPins(0, this->_serialPin, 0, 0);
-    delay(1);
+    delayMicroseconds(1); // I'm not sure why we need a delay, but if we don't
+                          // the serial will be a bit bad
 }
 void FrskySP::_enableRX()
 {
