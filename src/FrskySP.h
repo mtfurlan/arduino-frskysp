@@ -390,7 +390,7 @@ class FrskySP {
         int      available ();
         uint8_t  CRC (uint8_t *packet);
         bool     CRCcheck (uint8_t *packet);
-		void     ledSet (int pin);
+        void     ledSet (int pin);
         uint32_t lipoCell (uint8_t id, float val);
         uint32_t lipoCell (uint8_t id, float val1, float val2);
         byte     read ();
@@ -404,7 +404,7 @@ class FrskySP {
         int _serialPin;
         uint8_t _cellMax = 0;
         void    _ledToggle (int state);
-        int     _pinLed = -1;										//!<LED pin (-1 = disabled)
+        int     _pinLed = -1;         //!<LED pin (-1 = disabled)
         void     _enableRX();
         void     _enableTX();
 

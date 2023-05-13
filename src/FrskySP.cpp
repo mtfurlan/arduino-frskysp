@@ -105,7 +105,7 @@
  *
  * Connections
  * ===========
- * Simply connect the smart port data line to any pin SoftwareSerial can be used on.
+ * Simply connect the smart port data line to any pin HardwareSerial can be used on.
  *
  * \version devel
  * \author Jean-Christophe Heger
@@ -132,12 +132,10 @@ void FrskySP::_enableRX()
     this->_serial->setPins(this->_serialPin, 0, 0, 0);
 }
 /**
- * Open a SoftwareSerial connection
+ * Open a HardwareSerial connection
+ * \param HardwareSerial serial port to use
  * \param pin Communications pin
  * \brief Class constructor
- * \todo allow the use [AltSoftSerial] (http://www.pjrc.com/teensy/td_libs_AltSoftSerial.html) instead - much faster
- *   than SerialSoftware, and no conflict with [PinChangeInt] (https://code.google.com/p/arduino-pinchangeint/) - see
- *  [bugs] (https://code.google.com/p/arduino-pinchangeint/wiki/Bugs).
  */
 FrskySP::FrskySP (HardwareSerial* serial, int pin) {
     this->_serial = serial;
@@ -147,8 +145,6 @@ FrskySP::FrskySP (HardwareSerial* serial, int pin) {
 
 /**
  * Check if a byte is available on Smart Port
- *
- * \brief SoftwareSerial.available() passthrough
  */
 int FrskySP::available () {
     return this->_serial->available ();
@@ -156,7 +152,7 @@ int FrskySP::available () {
 
 /**
  * Enable LED toggling while sending data
- * \param pin (usually 13)
+ * \param pin
  */
 void FrskySP::ledSet (int pin) {
 	this->_pinLed = pin;
@@ -248,7 +244,7 @@ uint32_t FrskySP::lipoCell (uint8_t id, float val1, float val2) {
 }
 
 /**
- * \brief SoftwareSerial.read() passthrough
+ * \brief HardwareSerial.read() passthrough
  */
 byte FrskySP::read () {
     return this->_serial->read ();
@@ -338,7 +334,7 @@ void FrskySP::sendData (uint8_t type, uint16_t id, int32_t val) {
 }
 
 /**
- * \brief SoftwareSerial.write() passthrough
+ * \brief HardwareSerial.write() passthrough
  */
 byte FrskySP::write (byte val) {
     return this->_serial->write (val);

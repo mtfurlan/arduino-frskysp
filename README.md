@@ -1,6 +1,13 @@
 # arduino-frskysp
-Forked for esp32 reasons
-Not sure I'm going to try to merge, but definitely needs more cleanup either way.
+This library is for transmitting Frsky SmartPort stuff from an esp32 using HardwareSerial.
+
+The main changes from upstream are to use HardwareSerial instead of SoftwareSerial,
+and to swap the pin between RX and TX using `setPins` when transmitting,
+because I had issues when they were the same pin.
+
+WARNING: I didn't touch the examples so they don't work right now.
+
+---
 
 
 FrskySP (SmartPort) protocol library for Arduino - Arduino 1.5 compliant repository of [frsky-arduino](https://github.com/jcheger/frsky-arduino)
